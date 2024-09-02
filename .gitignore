@@ -1,0 +1,23 @@
+# Binaries
+/bin/
+/bin/*
+
+# Output files
+*.out
+
+# Dependency directories (vendor)
+vendor/
+
+# Test binaries
+*.test
+
+# Go workspace file
+go.work
+go.work.sum
+
+# Logs
+*.log
+
+# Environment files
+.env
+
