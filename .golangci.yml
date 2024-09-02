@@ -1,0 +1,12 @@
+linters:
+  enable:
+    - govet
+    - errcheck
+    - staticcheck
+    - gofmt
+    - goimports
+    - gocyclo
+
+run:
+  timeout: 2m
+
