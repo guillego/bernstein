@@ -37,7 +37,7 @@ jobs:
       run: go test -v ./...
 
     - name: Run linter
-      run: golangci-lint run
+      run: golangci-lint run ./cmd/bernstein/... ./internal/...
 
     - name: Format check
       run: gofmt -d .
