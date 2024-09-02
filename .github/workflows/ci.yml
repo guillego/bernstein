@@ -38,9 +38,9 @@ jobs:
 
     - name: Run linter
       run: |
-      pwd
-      ls -la
-      golangci-lint run ./cmd/bernstein/... ./internal/...
+        pwd
+        ls -la
+        golangci-lint run ./cmd/bernstein/... ./internal/...
 
     - name: Format check
       run: gofmt -d .
