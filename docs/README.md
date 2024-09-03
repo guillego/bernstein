@@ -1,5 +1,5 @@
 # Bernstein
-[![Go CI](https://github.com/guillego/bernstein/actions/workflows/ci.yml/badge.svg)](https://github.com/guillego/bernstein/actions/workflows/ci.yml)
+[![ci](https://github.com/guillego/bernstein/actions/workflows/ci.yml/badge.svg)](https://github.com/guillego/bernstein/actions/workflows/ci.yml)
 
 This project is a minimal container orchestrator built with Go. It is designed to manage container deployment, execution, and monitoring across a small cluster of nodes.
 
