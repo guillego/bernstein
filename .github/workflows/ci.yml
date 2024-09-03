@@ -40,6 +40,7 @@ jobs:
       run: |
         pwd
         ls -la
+        ls -la ./bernstein
         golangci-lint run ./cmd/bernstein/...
 
     - name: Format check
