@@ -1,8 +1,5 @@
 package registry
 
-// registry implements a Registry for the nodes and containers
-// this is a very basic implementation and will probably need to be broken up
-
 import (
 	"fmt"
 	"log"
@@ -10,106 +7,121 @@ import (
 )
 
 // NodeData contains the information relevant to a node
-// cpu and ram indicate the *available* capacity in the node
 type NodeData struct {
-	name       string
-	ip         string
-	status     string
-	cpu        uint16
-	ram        uint16
-	containers []string
+	Name       string
+	IP         string
+	Status     string
+	CPU        uint16
+	RAM        uint16
+	Containers []string
 }
 
+// Registry manages a collection of nodes
+// Nodes are mutable
 type Registry struct {
 	mu    sync.RWMutex
-	nodes map[string]NodeData
+	nodes map[string]*NodeData
 }
 
+// NewRegistry creates a new Registry instance
 func NewRegistry() *Registry {
 	return &Registry{
-		nodes: make(map[string]NodeData),
+		nodes: make(map[string]*NodeData),
 	}
 }
 
-var ErrNodeNotFound = fmt.Errorf("node not found")
-var ErrNodeAlreadyExists = fmt.Errorf("node already exists")
+var (
+	ErrNodeNotFound      = fmt.Errorf("node not found")
+	ErrNodeAlreadyExists = fmt.Errorf("node already exists")
+)
 
 // GetNode retrieves the node data from the Registry
-func (r *Registry) GetNode(name string) (NodeData, bool) {
+func (r *Registry) GetNode(name string) (*NodeData, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
 	node, exists := r.nodes[name]
-	if exists {
-		log.Printf("GetNode: name=%s", name)
-	} else {
+	if !exists {
 		log.Printf("GetNode: name=%s not found", name)
+		return nil, ErrNodeNotFound
 	}
-	return node, exists
+	log.Printf("GetNode: name=%s", name)
+	return node, nil
 }
 
-func (r *Registry) AddNode(name string, ip string, status string, cpu uint16, ram uint16) error {
+// AddNode adds a new node to the Registry
+func (r *Registry) AddNode(name, ip, status string, cpu, ram uint16) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	_, exists := r.nodes[name]
-
-	if exists {
-		return ErrNodeAlreadyExists
+	if _, exists := r.nodes[name]; exists {
+		return fmt.Errorf("%w: %s", ErrNodeAlreadyExists, name)
 	}
 
-	r.nodes[name] = NodeData{name: name, ip: ip, status: status, cpu: cpu, ram: ram, containers: make([]string, 0)}
+	r.nodes[name] = &NodeData{
+		Name:       name,
+		IP:         ip,
+		Status:     status,
+		CPU:        cpu,
+		RAM:        ram,
+		Containers: []string{},
+	}
 	log.Printf("AddNode: name=%s - ip=%s, status=%s, cpu=%d, ram=%d", name, ip, status, cpu, ram)
-
 	return nil
 }
 
-// HACK! This is an extremely naive implementation, bad for race conditions
-func (r *Registry) AddContainerToNode(name string, container string, cpu_req uint16, ram_req uint16) error {
+// AddContainerToNode adds a container to a node and updates its resources
+// HACK! This is an extremely naive implementation, to be updated
+func (r *Registry) AddContainerToNode(name, container string, cpuReq, ramReq uint16) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
 	node, exists := r.nodes[name]
 	if !exists {
-		return ErrNodeNotFound
+		return fmt.Errorf("%w: %s", ErrNodeNotFound, name)
 	}
 
-	node.containers = append(node.containers, container)
-	node.cpu = node.cpu - cpu_req
-	node.ram = node.ram - ram_req
+	// Ensure the node has enough resources to allocate to the container
+	if node.CPU < cpuReq || node.RAM < ramReq {
+		return fmt.Errorf("insufficient resources on node %s", name)
+	}
 
-	r.nodes[name] = node
+	node.Containers = append(node.Containers, container)
+	node.CPU -= cpuReq
+	node.RAM -= ramReq
 
-	log.Printf("AddContainerToNode: name=%s - ip=%s, status=%s, cpu=%d, ram=%d", node.name, node.ip, node.status, node.cpu, node.ram)
-
+	log.Printf("AddContainerToNode: name=%s - container=%s, cpuReq=%d, ramReq=%d", node.Name, container, cpuReq, ramReq)
 	return nil
 }
 
-func (r *Registry) UpdateNodeStatus(name string, ip string, status string, cpu uint16, ram uint16) error {
+// UpdateNodeStatus updates the status and resources of a node
+func (r *Registry) UpdateNodeStatus(name, ip, status string, cpu, ram uint16) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	_, exists := r.nodes[name]
+	node, exists := r.nodes[name]
 	if !exists {
-		return ErrNodeNotFound
+		return fmt.Errorf("%w: %s", ErrNodeNotFound, name)
 	}
 
-	r.nodes[name] = NodeData{name: name, ip: ip, status: status, cpu: cpu, ram: ram}
-	log.Printf("UpdateNode: name=%s - ip=%s, status=%s, cpu=%d, ram=%d", name, ip, status, cpu, ram)
+	node.IP = ip
+	node.Status = status
+	node.CPU = cpu
+	node.RAM = ram
+	log.Printf("UpdateNodeStatus: name=%s - ip=%s, status=%s, cpu=%d, ram=%d", name, ip, status, cpu, ram)
 	return nil
 }
 
+// DeleteNode removes a node from the Registry
 func (r *Registry) DeleteNode(name string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	_, exists := r.nodes[name]
-	if !exists {
-		return ErrNodeNotFound
+	if _, exists := r.nodes[name]; !exists {
+		return fmt.Errorf("%w: %s", ErrNodeNotFound, name)
 	}
 
 	delete(r.nodes, name)
-
 	log.Printf("DeleteNode: name=%s", name)
 	return nil
 }
